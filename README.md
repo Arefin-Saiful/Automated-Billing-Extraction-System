@@ -167,7 +167,7 @@ Install **ODBC Driver 17 (or 18)** for SQL Server and verify your connection str
 ---
 
 ## 👤 Author
-**Rashidul Islam**  
+**Md Saiful Arefin**  
 Final-Year CS (Data Science) — Albukhary International University, Malaysia
 
 ---
