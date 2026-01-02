@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container" style="max-width: 600px; margin-top: 30px;">
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Generate Telco Vendor Report</h2>
+        </div>
+
+        <div class="card-body">
+
+            <form action="/ui/reports/generate" method="post">
+
+                <!-- Vendor -->
+                <div class="form-group">
+                    <label for="vendor">Select Vendor</label>
+                    <select id="vendor" name="vendor" class="form-control" required>
+                        <option value="">-- Select Vendor --</option>
+                        <option value="maxis" {% if vendor=='maxis' %}selected{% endif %}>Maxis</option>
+                        <option value="celcom" {% if vendor=='celcom' %}selected{% endif %}>Celcom</option>
+                        <option value="digi" {% if vendor=='digi' %}selected{% endif %}>Digi</option>
+                    </select>
+                </div>
+
+                <!-- Billing Date From -->
+                <div class="form-group">
+                    <label for="from_date">Billing Date From</label>
+                    <input type="date" id="from_date" name="from_date"
+                           class="form-control" required
+                           value="{{ from_date if from_date else '' }}">
+                </div>
+
+                <!-- Billing Date To -->
+                <div class="form-group">
+                    <label for="to_date">Billing Date To</label>
+                    <input type="date" id="to_date" name="to_date"
+                           class="form-control" required
+                           value="{{ to_date if to_date else '' }}">
+                </div>
+
+                <button class="btn btn-primary btn-block" style="margin-top: 15px;">
+                    Generate PDF
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if download_file %}
+    <div class="card" style="margin-top: 20px;">
+        <div class="card-body">
+            <h4>Report Ready</h4>
+            <p>Your PDF has been successfully generated.</p>
+            <a href="/output_reports/{{ download_file }}" target="_blank" class="btn btn-success">
+                Download {{ download_file }}
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

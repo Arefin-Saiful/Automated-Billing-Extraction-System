@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Home · Telco Ingest{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1 class="hero-title">Telco PDF Ingestion</h1>
+  <p class="hero-description text-muted">
+    Parse Maxis / Celcom / Digi bills → standardized JSON → DB upsert.
+  </p>
+
+  <div class="actions" style="gap: .5rem; flex-wrap: wrap; justify-content: space-between;">
+    <!-- Upload Page -->
+    <a class="btn btn-primary" href="{{ url_for('ui_upload') }}">Upload PDFs</a>
+
+    <!-- Ingest Jobs -->
+    <a class="btn btn-primary" href="{{ url_for('ui_ingests') }}">View Ingest Jobs</a>
+
+    <!-- Health Check -->
+    <a class="btn btn-ghost" href="{{ url_for('health:root') }}">Health Check</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h2 class="card-title">Quick Start</h2>
+  </div>
+  <div class="card-body">
+    <ol>
+      <li>Go to <strong>Upload PDFs</strong> and drop one or more statements (PDF).</li>
+      <li>The app will <em>auto-detect vendor</em> and run the matching parser.</li>
+      <li>Standardized package is produced: <code>{ invoice, numbers, charges, raw }</code>.</li>
+      <li>Data is upserted via <code>sp_Upsert_InvoicePackage_JSON</code> into your SQL Server.</li>
+    </ol>
+    <p class="text-muted" style="margin-top: .5rem">
+      Tip: You can also use the REST endpoints under <code>/api/ingest</code> to automate imports.
+    </p>
+  </div>
+</section>
+
+<section class="grid">
+  <!-- Recent Ingests -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Recent Ingests</h3>
+    </div>
+    <div class="card-body">
+      {% if recent_jobs and recent_jobs|length > 0 %}
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Vendor</th>
+                <th>Invoice #</th>
+                <th>Account #</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for j in recent_jobs %}
+              <tr>
+                <td>{{ j.created_at }}</td>
+                <td class="badge" data-badge="{{ j.vendor|default('')|lower }}">
+                  {{ j.vendor|capitalize if j.vendor else '—' }}
+                </td>
+                <td>{{ j.invoice_number or '—' }}</td>
+                <td>{{ j.account_number or '—' }}</td>
+                <td>
+                  {% if j.status == 'success' %}
+                    <span class="badge success">Success</span>
+                  {% elif j.status == 'processing' %}
+                    <span class="badge info">Processing</span>
+                  {% else %}
+                    <span class="badge warning">{{ j.status or 'Unknown' }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: .75rem">
+          <a class="btn btn-ghost" href="{{ url_for('ui_ingests') }}">
+            See all ingests →
+          </a>
+        </div>
+      {% else %}
+        <p class="text-muted">
+          No ingests yet. 
+          <a href="{{ url_for('ui_upload') }}">Upload your first PDF</a>.
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Parsers -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Parsers & Vendors</h3>
+    </div>
+    <div class="card-body">
+      <ul class="list">
+        <li><strong>Maxis</strong> — Header + charges + service details; strict money parsing.</li>
+        <li><strong>Celcom</strong> — Adapter aligns to the same envelope; supports payments PDF.</li>
+        <li><strong>Digi</strong> — Thin adapter over original logic; preserves itemized lists.</li>
+      </ul>
+      <p class="text-muted" style="margin-top: .5rem">
+        Vendor is detected via <code>app/utils/vendor_detect.py</code> (PDF text heuristics).
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h3 class="card-title">Environment</h3>
+  </div>
+  <div class="card-body">
+    <div class="kv">
+      <div class="kv-row">
+        <div class="kv-key">DB</div>
+        <div class="kv-val"><code>{{ env.DB_NAME if env and env.DB_NAME is defined else 'Telco Bills' }}</code></div>
+      </div>
+      <div class="kv-row">
+        <div class="kv-key">Stored Proc</div>
+        <div class="kv-val"><code>dbo.sp_Upsert_InvoicePackage_JSON</code></div>
+      </div>
+      <div class="kv-row">
+        <div class="kv-key">Uploads dir</div>
+        <div class="kv-val"><code>{{ env.UPLOAD_DIR if env and env.UPLOAD_DIR is defined else 'uploads/' }}</code></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

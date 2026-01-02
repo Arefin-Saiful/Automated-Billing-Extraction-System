@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>{% block title %}Telco Ingest{% endblock %}</title>
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}" />
+
+  <!-- Favicon (inline SVG) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='48' height='48' rx='10' fill='url(%23g)'/%3E%3Cpath d='M12 30c8 0 8-12 16-12 3.6 0 6.1 2.1 8 5m-2-10v18M12 18v18' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+
+  {% block head %}{% endblock %}
+  <style>
+    .flash { margin: 0 0 12px; }
+    /* Loading spinner */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <header class="header">
+      <a href="{{ url_for('ui_index') }}" class="brand" aria-label="Home">
+        <span class="logo" aria-hidden="true"></span>
+        <span class="title">Telco Ingest</span>
+      </a>
+
+      <nav class="actions">
+        <a class="btn" href="{{ url_for('ui_index') }}">Home</a>
+        <a class="btn" href="{{ url_for('ui_upload') }}">Upload PDFs</a>
+        <a class="btn" href="{{ url_for('ui_reports') }}">Reports</a>
+        <a class="btn btn-ghost" href="/docs">API Docs</a>
+      </nav>
+    </header>
+
+    {% block notice %}{% endblock %}
+
+    {% if flash %}
+      <div class="toast" style="position: static;">
+        {% for f in flash %}
+          <div class="alert {{ f.type|default('') }} flash">
+            <div>
+              {% if f.title %}
+                <div class="title">{{ f.title }}</div>
+              {% endif %}
+              <div>{{ f.message }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div>&copy; 2024 Telco Ingest</div>
+      <div class="text-muted">PDF → JSON → DB (Maxis / Celcom / Digi)</div>
+    </footer>
+
+  </div>
+
+  <!-- Helpers -->
+  <script>
+    window.$qs  = sel => document.querySelector(sel);
+    window.$qsa = sel => Array.from(document.querySelectorAll(sel));
+
+    // Show loading spinner and process files
+    async function postForm(url, form, outSel) {
+      const out = document.querySelector(outSel);
+      const loadingAnimation = document.getElementById("loadingAnimation");
+      const successMessage = document.getElementById("successMessage");
+
+      out.style.display = 'block';
+      out.textContent = "Processing...";
+
+      loadingAnimation.style.display = "block"; // Show the loading spinner
+
+      try {
+        const body = new FormData(form);
+        const resp = await fetch(url, { method: "POST", body });
+        const text = await resp.text();
+
+        try {
+          const json = JSON.parse(text);
+          out.textContent = JSON.stringify(json, null, 2);
+          loadingAnimation.style.display = "none"; // Hide loading spinner
+          successMessage.style.display = "block"; // Show success message
+        } catch (_) {
+          out.textContent = text;
+          loadingAnimation.style.display = "none"; // Hide loading spinner
+          successMessage.style.display = "block"; // Show success message
+        }
+      } catch (e) {
+        out.textContent = "Request failed: " + e;
+        loadingAnimation.style.display = "none"; // Hide loading spinner on error
+      }
+    }
+
+    function wireDropzone(id, { onFiles } = {}) {
+      const dz = typeof id === 'string' ? document.getElementById(id) : id;
+      if (!dz) return;
+      const add = cls => dz.classList.add(cls);
+      const rm  = cls => dz.classList.remove(cls);
+
+      ['dragenter', 'dragover'].forEach(evt =>
+        dz.addEventListener(evt, e => { e.preventDefault(); add('dragover'); })
+      );
+      ['dragleave', 'drop'].forEach(evt =>
+        dz.addEventListener(evt, e => { e.preventDefault(); rm('dragover'); })
+      );
+
+      dz.addEventListener('drop', e => {
+        const files = Array.from(e.dataTransfer.files || []);
+        if (onFiles) onFiles(files);
+      });
+    }
+
+    // Handle the file upload form submission
+    document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const resultBox = document.getElementById("resultBox");
+      const loadingAnimation = document.getElementById("loadingAnimation");
+      const successMessage = document.getElementById("successMessage");
+
+      // Show loading animation and hide success message
+      loadingAnimation.style.display = "block";
+      successMessage.style.display = "none";
+      resultBox.style.display = "none"; // Hide the result box during upload
+
+      const files = document.getElementById("files").files;
+      const persist = document.getElementById("persist").checked;
+
+      if (!files.length) {
+          resultBox.textContent = "Please select a PDF file first.";
+          return;
+      }
+
+      const formData = new FormData();
+
+      // API expects: /ingest/file for single OR /ingest/batch for multiple
+      const isMulti = files.length > 1;
+      const endpoint = isMulti ? "/ingest/batch" : "/ingest/file";
+
+      for (let f of files) {
+          formData.append(isMulti ? "files" : "file", f);
+      }
+
+      formData.append("persist", persist);
+
+      try {
+          const response = await fetch(endpoint, {
+              method: "POST",
+              body: formData
+          });
+
+          const text = await response.text();
+          try {
+              // Hide the loading animation and show the success message
+              loadingAnimation.style.display = "none";
+              successMessage.style.display = "block";
+
+              // Optional: if you want to show the raw JSON, uncomment the following
+              // resultBox.style.display = "block"; 
+              // resultBox.textContent = JSON.stringify(JSON.parse(text), null, 2);
+          } catch {
+              resultBox.textContent = text;
+              // Hide loading animation and show the error message
+              loadingAnimation.style.display = "none";
+              successMessage.style.display = "none"; // Optional: Display error message here
+          }
+
+      } catch (err) {
+          resultBox.textContent = "Error: " + err;
+          loadingAnimation.style.display = "none"; // Hide loading on error
+      }
+    });
+  </script>
+
+  <!-- Include the app.js file -->
+  <script src="{{ url_for('static', path='app.js') }}"></script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

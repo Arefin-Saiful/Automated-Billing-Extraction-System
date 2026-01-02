@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Payment Summary</title>
+
+<style>
+    body {
+        font-family: "Calibri", "Segoe UI", Arial, sans-serif;
+        font-size: 12px;
+        margin: 22px;
+        color: #000;
+    }
+
+    h3 {
+        margin-bottom: 6px;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    p { margin: 3px 0; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse !important;
+        margin-top: 12px;
+        margin-bottom: 16px;
+        font-size: 11px;
+    }
+
+    th, td {
+        border: 1px solid #000 !important;
+        padding: 6px 8px;
+    }
+
+    th {
+        text-align: center;
+        font-weight: 600;
+        background-color: #f2f2f2;
+    }
+
+    td.center { text-align: center; }
+    td.num    { text-align: right; }
+
+    .section-title {
+        text-align: center;
+        font-weight: 700;
+        margin-top: 25px;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        font-size: 12px;
+    }
+
+    .footer-table,
+    .footer-table tr,
+    .footer-table td {
+        border: 1px solid #000 !important;
+        border-collapse: collapse !important;
+        font-size: 12px;
+        padding: 6px 8px;
+        font-weight: 600;
+    }
+
+    .footer-table tr td:first-child {
+        text-align: right;
+        width: 80%;
+    }
+
+    .footer-table tr td:last-child {
+        text-align: right;
+        width: 20%;
+    }
+
+    .opun-block {
+        margin-top: 18px;
+        page-break-inside: avoid;
+    }
+
+    .opun-label {
+        font-weight: 700;
+        margin-top: 6px;
+        margin-bottom: 0;
+    }
+</style>
+
+</head>
+
+<body>
+
+<h3>Payment Summary</h3>
+
+<p><strong>Vendor:</strong> {{ vendor_display }}</p>
+
+<p>
+    <strong>Details:</strong>
+    {{ vendor|upper }} mobile bills for OPUN.
+    Please refer to the itemized charges for the respective operating units.
+</p>
+
+<p>
+    <strong>Period:</strong>
+    {{ from_date.strftime("%d/%m/%Y") }} -
+    {{ to_date.strftime("%d/%m/%Y") }}
+</p>
+
+
+<!-- ================= SUMMARY TABLE ================= -->
+
+<div class="section-title">SUMMARY OF ALL BILLS</div>
+
+<table>
+<thead>
+<tr>
+    <th>No</th>
+    <th>Account No.</th>
+    <th>Bill Statement No.</th>
+    <th>Bill Date</th>
+    <th>Amount (MYR)</th>
+</tr>
+</thead>
+
+<tbody>
+{% for r in summary_rows %}
+<tr>
+    <td class="center">{{ loop.index }}</td>
+    <td class="center">{{ r.account_no }}</td>
+    <td class="center">{{ r.invoice_no }}</td>
+    <td class="center">{{ r.invoice_date.strftime("%d/%m/%Y") }}</td>
+    <td class="num">{{ "%.2f"|format(r.amount_myr) }}</td>
+</tr>
+{% endfor %}
+
+<!-- ✅ NEW: TOTAL ROW (ALL VENDORS) -->
+<tr>
+    <td></td>
+    <td colspan="3" class="num"><strong>Total Amount(MYR)</strong></td>
+    <td class="num"><strong>{{ "%.2f"|format(summary_total_amount) }}</strong></td>
+</tr>
+
+</tbody>
+</table>
+
+
+<!-- ================= DETAIL TABLE ================= -->
+
+<div class="section-title">DETAIL SUMMARY OF EACH BILL</div>
+
+<table>
+<thead>
+<tr>
+    <th>Invoice No</th>
+    <th>Invoice Date</th>
+    <th>Telco</th>
+    <th>Phone Number</th>
+    <th>OPUN</th>
+    <th>Amount</th>
+    <th>SST</th>
+
+    {% if footer_type == "celcom" %}
+        <!-- ✅ CELCOM: remove Total w/ SST + remove rounding/overdue; keep Total Amount only -->
+        <th>Total Amount (MYR)</th>
+    {% else %}
+        <th>Total w/ SST</th>
+    {% endif %}
+</tr>
+</thead>
+
+<tbody>
+{% for r in detail_rows %}
+<tr>
+    <td class="center">{{ r.invoice_no }}</td>
+    <td class="center">{{ r.invoice_date.strftime("%d/%m/%Y") }}</td>
+    <td class="center">{{ r.telco }}</td>
+    <td class="center">{{ r.phone_number }}</td>
+    <td class="center">{{ r.opun }}</td>
+    <td class="num">{{ "%.2f"|format(r.amount) }}</td>
+    <td class="center">{{ r.sst }}</td>
+
+    {% if footer_type == "celcom" %}
+        <!-- ✅ CELCOM: Total Amount takes Total w/ SST value -->
+        <td class="num"><strong>{{ "%.2f"|format(r.total_with_sst) }}</strong></td>
+    {% else %}
+        <td class="num">{{ "%.2f"|format(r.total_with_sst) }}</td>
+    {% endif %}
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+
+<!-- ================= FINAL FOOTER (KEEP AS USUAL PLACE) ================= -->
+
+<table class="footer-table" style="width:100%; margin-top:25px;">
+<tbody>
+
+{% if footer_type != "celcom" %}
+<tr>
+    <td>Monthly Charges with Service Tax 6% (MYR)</td>
+    <td>{{ "%.2f"|format(monthly_charges) }}</td>
+</tr>
+
+<tr>
+    <td>Rounding Adjustment (MYR)</td>
+    <td>{{ "%.2f"|format(rounding) }}</td>
+</tr>
+{% endif %}
+
+<tr>
+    <td><strong>Grand Total (MYR)</strong></td>
+    <td><strong>{{ "%.2f"|format(grand_total) }}</strong></td>
+</tr>
+
+</tbody>
+</table>
+
+
+<!-- ===================================================== -->
+<!-- ✅ NEW SECTION (AFTER FOOTER): GROUPED BY OPUN         -->
+<!-- ===================================================== -->
+
+<div class="section-title">DETAIL BY OPUN</div>
+
+{% for g in opun_sections %}
+<div class="opun-block">
+
+    <p class="opun-label"><strong>OPUN:</strong> {{ g.opun }}</p>
+
+    <table>
+    <thead>
+    <tr>
+        <th>No</th>
+        <th>Invoice No</th>
+        <th>Invoice Date</th>
+        <th>Amount</th>
+        <th>SST</th>
+
+        {% if footer_type == "celcom" %}
+            <!-- ✅ CELCOM: remove Total w/ SST + remove rounding/overdue; keep Total Amount only -->
+            <th>Total Amount (MYR)</th>
+        {% else %}
+            <th>Total w/ SST</th>
+        {% endif %}
+    </tr>
+    </thead>
+
+    <tbody>
+    {% for r in g.rows %}
+    <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td class="center">{{ r.invoice_no }}</td>
+        <td class="center">{{ r.invoice_date.strftime("%d/%m/%Y") }}</td>
+        <td class="num">{{ "%.2f"|format(r.amount) }}</td>
+        <td class="center">{{ r.sst }}</td>
+
+        {% if footer_type == "celcom" %}
+            <!-- ✅ CELCOM: Total Amount takes Total w/ SST value -->
+            <td class="num"><strong>{{ "%.2f"|format(r.total_with_sst) }}</strong></td>
+        {% else %}
+            <td class="num">{{ "%.2f"|format(r.total_with_sst) }}</td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+
+    <table class="footer-table" style="width:100%; margin-top:0;">
+    <tbody>
+        <tr>
+            <td><strong>Total Amount (MYR)</strong></td>
+            <td><strong>{{ "%.2f"|format(g.total) }}</strong></td>
+        </tr>
+    </tbody>
+    </table>
+
+</div>
+{% endfor %}
+
+</body>
+</html>

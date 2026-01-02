@@ -1,0 +1,76 @@
+INSTALLING WKHTMLTOPDF
+------------------------
+
+wkhtmltopdf is required for generating PDF reports in the Telco Ingest system.
+
+Follow the instructions below depending on your operating system.
+
+============================================================
+WINDOWS INSTALLATION
+============================================================
+
+1. Download the Windows installer (64-bit) from:
+   https://wkhtmltopdf.org/downloads.html
+
+2. Choose the version:
+   wkhtmltox-0.12.6-1.msvc2015-win64.exe
+
+3. Run the installer and complete installation.
+
+4. Ensure the following path is added to the system PATH:
+   C:\Program Files\wkhtmltopdf\bin
+
+5. Verify installation:
+   Open Command Prompt and run:
+   wkhtmltopdf --version
+
+If you see a version number, installation is successful.
+
+
+============================================================
+LINUX (UBUNTU) INSTALLATION
+============================================================
+
+1. Update package lists:
+   sudo apt update
+
+2. Install wkhtmltopdf:
+   sudo apt install wkhtmltopdf
+
+3. Verify installation:
+   wkhtmltopdf --version
+
+
+============================================================
+COMMON ISSUES
+============================================================
+
+1. ERROR: 'No wkhtmltopdf executable found'
+   → Ensure the binary is installed and PATH is correctly set.
+
+2. ERROR: Permission Denied
+   → Run installation as administrator (Windows) or use sudo (Linux).
+
+3. ERROR: HTML to PDF conversion fails
+   → Missing fonts; install standard fonts package:
+     sudo apt install ttf-mscorefonts-installer
+
+
+============================================================
+WHERE THE APP EXPECTS WKHTMLTOPDF
+============================================================
+
+In your FastAPI project, update this path if needed:
+
+Python file: vendor_report_pdf.py
+
+Example for Windows:
+   WKHTMLTOPDF_PATH = r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+
+Example for Linux:
+   WKHTMLTOPDF_PATH = "/usr/bin/wkhtmltopdf"
+
+Ensure this matches your server environment.
+
+------------------------------------------------------------
+End of file.

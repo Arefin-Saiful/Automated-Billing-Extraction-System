@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Upload PDFs{% endblock %}
+
+{% block content %}
+
+<section class="hero">
+    <h1>Upload Telco PDFs</h1>
+    <p class="text-muted">Drop Maxis / Celcom / Digi PDF files to ingest.</p>
+</section>
+
+<section class="card">
+    <div class="card-header">
+        <h3 class="card-title">Upload Files</h3>
+    </div>
+
+    <div class="card-body">
+
+        <!-- Upload Form -->
+        <form id="uploadForm">
+            <input type="file" name="files" id="files" multiple required class="input">
+
+            <label style="margin-top:10px; display:flex; align-items:center;">
+                <input type="checkbox" id="persist" name="persist" checked>
+                <span style="margin-left:6px;">Persist to Database</span>
+            </label>
+
+            <button class="btn" type="submit" style="margin-top: 10px;">Upload</button>
+        </form>
+
+        <!-- RESULT OUTPUT BLOCK -->
+        <h4 style="margin-top:25px;">Result</h4>
+
+        <!-- Loading Animation (hidden by default) -->
+        <div id="loadingAnimation" style="display:none;">
+            <p>Processing...</p>
+            <div class="spinner"></div> <!-- Spinner will be a simple spinning circle -->
+        </div>
+
+        <!-- Success Message (hidden by default) -->
+        <div id="successMessage" style="display:none;">
+            <p>Extraction completed and data has been stored in SQL Server!</p>
+        </div>
+
+        <!-- Result Text Box (hidden by default) -->
+        <pre id="resultBox" 
+             style="background:#111; border:1px solid #333; color:#0f0; padding:15px; min-height:120px; white-space:pre-wrap; display:none;">
+        </pre>
+
+    </div>
+</section>
+
+<!-- AJAX SCRIPT -->
+<script>
+// Handle form submission
+document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const resultBox = document.getElementById("resultBox");
+    const loadingAnimation = document.getElementById("loadingAnimation");
+    const successMessage = document.getElementById("successMessage");
+
+    // Show loading animation and hide success message
+    loadingAnimation.style.display = "block";
+    successMessage.style.display = "none";
+    resultBox.style.display = "none"; // Hide the result box during upload
+
+    const files = document.getElementById("files").files;
+    const persist = document.getElementById("persist").checked;
+
+    if (!files.length) {
+        resultBox.textContent = "Please select a PDF file first.";
+        return;
+    }
+
+    const formData = new FormData();
+
+    // API expects: /ingest/file for single OR /ingest/batch for multiple
+    const isMulti = files.length > 1;
+    const endpoint = isMulti ? "/ingest/batch" : "/ingest/file";
+
+    for (let f of files) {
+        formData.append(isMulti ? "files" : "file", f);
+    }
+
+    formData.append("persist", persist);
+
+    try {
+        const response = await fetch(endpoint, {
+            method: "POST",
+            body: formData
+        });
+
+        const text = await response.text();
+        try {
+            // Hide the loading animation and show the success message
+            loadingAnimation.style.display = "none";
+            successMessage.style.display = "block";
+
+            // Optional: if you want to show the raw JSON, uncomment the following
+            // resultBox.style.display = "block"; 
+            // resultBox.textContent = JSON.stringify(JSON.parse(text), null, 2);
+        } catch {
+            resultBox.textContent = text;
+            // Hide loading animation and show the error message
+            loadingAnimation.style.display = "none";
+            successMessage.style.display = "none"; // Optional: Display error message here
+        }
+
+    } catch (err) {
+        resultBox.textContent = "Error: " + err;
+        loadingAnimation.style.display = "none"; // Hide loading on error
+    }
+});
+</script>
+
+{% endblock %}
